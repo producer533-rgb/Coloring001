@@ -3,12 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kids Coloring Game</title>
+  <title>Kids Coloring Game V4</title>
   <style>
+    :root {
+      --ink: #111111;
+      --shadow: 0 8px 26px #0002;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: linear-gradient(180deg, #f8fbff, #e9f3ff);
+      background: linear-gradient(180deg, #fff8fc, #eaf6ff);
       color: #222;
       text-align: center;
     }
@@ -23,12 +32,12 @@
     }
 
     p {
-      margin: 6px 0 14px;
-      font-size: 1rem;
+      margin: 6px 0 12px;
+      color: #555;
     }
 
     .game {
-      max-width: 900px;
+      max-width: 980px;
       margin: auto;
       padding: 12px;
     }
@@ -40,6 +49,13 @@
       justify-content: center;
       align-items: center;
       margin-bottom: 12px;
+    }
+
+    .palette {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
     }
 
     .swatch {
@@ -69,39 +85,89 @@
       cursor: pointer;
     }
 
+    button.tool-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 48px;
+      font-weight: 700;
+    }
+
+    .button-icon {
+      font-size: 1.45rem;
+      line-height: 1;
+    }
+
+    #pagePicker {
+      min-height: 48px;
+      font-weight: 700;
+    }
+
+    button.active {
+      outline: 4px solid #222;
+    }
+
     label {
       background: white;
       border-radius: 999px;
       padding: 8px 12px;
       box-shadow: 0 2px 8px #0002;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .canvas-wrap {
       position: relative;
-      width: min(92vw, 780px);
+      width: min(94vw, 850px);
       aspect-ratio: 4 / 3;
       margin: 0 auto;
       background: white;
       border-radius: 24px;
-      box-shadow: 0 8px 30px #0002;
+      box-shadow: var(--shadow);
       overflow: hidden;
       touch-action: none;
     }
 
-    canvas, svg {
+    svg, canvas {
       position: absolute;
       inset: 0;
       width: 100%;
       height: 100%;
     }
 
-    canvas {
+    #fillLayer {
       z-index: 1;
+    }
+
+    #drawCanvas {
+      z-index: 2;
       cursor: crosshair;
     }
 
-    svg {
-      z-index: 2;
+    #outlineLayer {
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    .region {
+      stroke: none;
+      cursor: pointer;
+    }
+
+    .outline {
+      fill: none;
+      stroke: var(--ink);
+      stroke-width: 8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      pointer-events: none;
+    }
+
+    .outline-fill {
+      fill: var(--ink);
+      stroke: none;
       pointer-events: none;
     }
 
@@ -114,79 +180,83 @@
 </head>
 <body>
   <header>
-    <h1>Color the Friendly Dino</h1>
-    <p>Pick a color, then drag your finger or mouse to color!</p>
+    <h1>Kids Coloring Game V4</h1>
+    <p>Paint bucket fills areas. Brush colors underneath the black lines.</p>
   </header>
 
   <main class="game">
     <div class="toolbar">
-      <div id="palette"></div>
+      <select id="pagePicker" aria-label="Choose a coloring page">
+        <option value="dino">🦕 Friendly Dino</option>
+        <option value="rocket">🚀 Rocket Ship</option>
+        <option value="fish">🐟 Happy Fish</option>
+      </select>
+
+      <div class="palette" id="palette"></div>
+
+      <label>
+        🎨 Custom
+        <input id="customColor" type="color" value="#ff4d6d" aria-label="Choose custom color" />
+      </label>
+
+      <button id="bucketBtn" class="tool-button active" aria-label="Paint Bucket tool">
+        <span class="button-icon">🪣</span>
+        <span>Paint Bucket</span>
+      </button>
+      <button id="brushBtn" class="tool-button" aria-label="Brush tool">
+        <span class="button-icon">🖌️</span>
+        <span>Brush</span>
+      </button>
+      <button id="eraserBtn" class="tool-button" aria-label="Eraser tool">
+        <span class="button-icon">🧽</span>
+        <span>Eraser</span>
+      </button>
 
       <label>
         Brush
-        <input id="brushSize" type="range" min="6" max="42" value="18" />
+        <input id="brushSize" type="range" min="5" max="44" value="18" />
       </label>
 
-      <button id="eraserBtn">Eraser</button>
-      <button id="clearBtn">Clear</button>
-      <button id="saveBtn">Save Picture</button>
+      <button id="undoBtn" class="tool-button" aria-label="Undo">
+        <span class="button-icon">↩️</span>
+        <span>Undo</span>
+      </button>
+      <button id="clearBtn" class="tool-button" aria-label="Clear picture">
+        <span class="button-icon">🧹</span>
+        <span>Clear</span>
+      </button>
+      <button id="saveBtn" class="tool-button" aria-label="Save picture">
+        <span class="button-icon">💾</span>
+        <span>Save Picture</span>
+      </button>
     </div>
 
     <div class="canvas-wrap" id="canvasWrap">
-      <canvas id="colorCanvas"></canvas>
-
-      <svg viewBox="0 0 800 600" aria-label="Friendly dinosaur outline">
-        <g fill="none" stroke="#111" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
-          <!-- ground -->
-          <path d="M70 510 C210 485, 600 485, 730 510" />
-
-          <!-- sun -->
-          <circle cx="675" cy="95" r="45" />
-          <path d="M675 25 V5 M675 185 V165 M605 95 H585 M765 95 H745 M625 45 L610 30 M725 145 L740 160 M625 145 L610 160 M725 45 L740 30" />
-
-          <!-- dino body -->
-          <path d="M210 405 C160 330, 190 245, 285 225 C345 130, 455 125, 505 210 C585 220, 640 275, 625 350 C610 425, 525 455, 430 438 C350 485, 255 470, 210 405 Z" />
-
-          <!-- head snout -->
-          <path d="M470 198 C545 160, 635 178, 660 240 C675 275, 650 310, 605 308 C560 306, 520 275, 495 235" />
-
-          <!-- eye and smile -->
-          <circle cx="555" cy="220" r="8" fill="#111" />
-          <path d="M575 265 C598 285, 625 280, 640 258" />
-
-          <!-- legs -->
-          <path d="M295 435 L270 505 L335 505 L355 450" />
-          <path d="M470 438 L490 505 L555 505 L525 425" />
-
-          <!-- arm -->
-          <path d="M420 310 C382 322, 370 355, 398 370" />
-
-          <!-- tail -->
-          <path d="M215 365 C145 355, 95 315, 75 250 C145 270, 195 295, 235 330" />
-
-          <!-- back plates -->
-          <path d="M310 224 L330 175 L355 222" />
-          <path d="M375 190 L405 135 L430 200" />
-          <path d="M455 195 L490 145 L510 215" />
-
-          <!-- clouds -->
-          <path d="M95 125 C90 95, 130 80, 150 105 C170 75, 220 90, 215 130 C245 130, 260 165, 230 180 H105 C75 175, 70 140, 95 125 Z" />
-        </g>
-      </svg>
+      <svg id="fillLayer" viewBox="0 0 800 600" aria-label="Color fill layer"></svg>
+      <canvas id="drawCanvas"></canvas>
+      <svg id="outlineLayer" viewBox="0 0 800 600" aria-label="Black outline layer"></svg>
     </div>
 
-    <div class="hint">Tip: The black lines stay on top, so kids can color freely inside or outside the shapes.</div>
+    <div class="hint">The black outline is always on top, so brush strokes will not hide the picture. Use the icon buttons to pick a tool.</div>
   </main>
 
   <script>
-    const canvas = document.getElementById("colorCanvas");
+    const fillLayer = document.getElementById("fillLayer");
+    const outlineLayer = document.getElementById("outlineLayer");
+    const canvas = document.getElementById("drawCanvas");
     const wrap = document.getElementById("canvasWrap");
     const ctx = canvas.getContext("2d");
-    const brushSize = document.getElementById("brushSize");
+
+    const pagePicker = document.getElementById("pagePicker");
+    const palette = document.getElementById("palette");
+    const customColor = document.getElementById("customColor");
+    const bucketBtn = document.getElementById("bucketBtn");
+    const brushBtn = document.getElementById("brushBtn");
     const eraserBtn = document.getElementById("eraserBtn");
+    const brushSize = document.getElementById("brushSize");
+    const undoBtn = document.getElementById("undoBtn");
     const clearBtn = document.getElementById("clearBtn");
     const saveBtn = document.getElementById("saveBtn");
-    const palette = document.getElementById("palette");
 
     const colors = [
       "#ff4d6d", "#ffb703", "#80ed99", "#38bdf8",
@@ -195,27 +265,108 @@
     ];
 
     let currentColor = colors[0];
+    let mode = "bucket";
     let drawing = false;
     let lastPoint = null;
-    let erasing = false;
+    let history = [];
 
-    function resizeCanvas() {
-      const rect = wrap.getBoundingClientRect();
-      const snapshot = document.createElement("canvas");
-      snapshot.width = canvas.width;
-      snapshot.height = canvas.height;
-      snapshot.getContext("2d").drawImage(canvas, 0, 0);
+    const pages = {
+      dino: {
+        fills: `
+          <path class="region" data-name="sky" d="M0 0 H800 V600 H0 Z"/>
+          <circle class="region" data-name="sun" cx="675" cy="95" r="45"/>
+          <path class="region" data-name="cloud" d="M95 125 C90 95, 130 80, 150 105 C170 75, 220 90, 215 130 C245 130, 260 165, 230 180 H105 C75 175, 70 140, 95 125 Z"/>
+          <path class="region" data-name="tail" d="M215 365 C145 355, 95 315, 75 250 C145 270, 195 295, 235 330 Z"/>
+          <path class="region" data-name="body" d="M210 405 C160 330, 190 245, 285 225 C345 130, 455 125, 505 210 C585 220, 640 275, 625 350 C610 425, 525 455, 430 438 C350 485, 255 470, 210 405 Z"/>
+          <path class="region" data-name="head" d="M470 198 C545 160, 635 178, 660 240 C675 275, 650 310, 605 308 C560 306, 520 275, 495 235 Z"/>
+          <path class="region" data-name="leg1" d="M295 435 L270 505 L335 505 L355 450 Z"/>
+          <path class="region" data-name="leg2" d="M470 438 L490 505 L555 505 L525 425 Z"/>
+          <path class="region" data-name="plate1" d="M310 224 L330 175 L355 222 Z"/>
+          <path class="region" data-name="plate2" d="M375 190 L405 135 L430 200 Z"/>
+          <path class="region" data-name="plate3" d="M455 195 L490 145 L510 215 Z"/>
+        `,
+        outlines: `
+          <path class="outline" d="M0 0 H800 V600 H0 Z"/>
+          <circle class="outline" cx="675" cy="95" r="45"/>
+          <path class="outline" d="M675 25 V5 M675 185 V165 M605 95 H585 M765 95 H745 M625 45 L610 30 M725 145 L740 160 M625 145 L610 160 M725 45 L740 30"/>
+          <path class="outline" d="M95 125 C90 95, 130 80, 150 105 C170 75, 220 90, 215 130 C245 130, 260 165, 230 180 H105 C75 175, 70 140, 95 125 Z"/>
+          <path class="outline" d="M215 365 C145 355, 95 315, 75 250 C145 270, 195 295, 235 330 Z"/>
+          <path class="outline" d="M210 405 C160 330, 190 245, 285 225 C345 130, 455 125, 505 210 C585 220, 640 275, 625 350 C610 425, 525 455, 430 438 C350 485, 255 470, 210 405 Z"/>
+          <path class="outline" d="M470 198 C545 160, 635 178, 660 240 C675 275, 650 310, 605 308 C560 306, 520 275, 495 235 Z"/>
+          <path class="outline" d="M295 435 L270 505 L335 505 L355 450 Z"/>
+          <path class="outline" d="M470 438 L490 505 L555 505 L525 425 Z"/>
+          <path class="outline" d="M310 224 L330 175 L355 222 Z"/>
+          <path class="outline" d="M375 190 L405 135 L430 200 Z"/>
+          <path class="outline" d="M455 195 L490 145 L510 215 Z"/>
+          <path class="outline" d="M70 510 C210 485, 600 485, 730 510"/>
+          <path class="outline" d="M420 310 C382 322, 370 355, 398 370"/>
+          <circle class="outline-fill" cx="555" cy="220" r="8"/>
+          <path class="outline" d="M575 265 C598 285, 625 280, 640 258"/>
+        `
+      },
 
-      canvas.width = Math.round(rect.width * devicePixelRatio);
-      canvas.height = Math.round(rect.height * devicePixelRatio);
-      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
+      rocket: {
+        fills: `
+          <path class="region" data-name="space" d="M0 0 H800 V600 H0 Z"/>
+          <circle class="region" data-name="planet" cx="145" cy="455" r="75"/>
+          <path class="region" data-name="rocket-body" d="M400 90 C485 175, 505 320, 430 435 C410 465, 390 465, 370 435 C295 320, 315 175, 400 90 Z"/>
+          <circle class="region" data-name="window" cx="400" cy="230" r="45"/>
+          <path class="region" data-name="left-fin" d="M337 365 L260 470 L370 430 Z"/>
+          <path class="region" data-name="right-fin" d="M463 365 L540 470 L430 430 Z"/>
+          <path class="region" data-name="flame1" d="M370 435 C355 485, 375 535, 400 575 C425 535, 445 485, 430 435 Z"/>
+          <path class="region" data-name="flame2" d="M386 445 C378 485, 392 520, 400 540 C408 520, 422 485, 414 445 Z"/>
+          <path class="region" data-name="star1" d="M650 80 L665 115 L700 120 L674 144 L682 178 L650 160 L618 178 L626 144 L600 120 L635 115 Z"/>
+          <path class="region" data-name="star2" d="M150 105 L160 130 L187 132 L166 150 L173 176 L150 162 L127 176 L134 150 L113 132 L140 130 Z"/>
+          <path class="region" data-name="star3" d="M650 360 L660 385 L687 387 L666 405 L673 431 L650 417 L627 431 L634 405 L613 387 L640 385 Z"/>
+        `,
+        outlines: `
+          <path class="outline" d="M0 0 H800 V600 H0 Z"/>
+          <circle class="outline" cx="145" cy="455" r="75"/>
+          <path class="outline" d="M400 90 C485 175, 505 320, 430 435 C410 465, 390 465, 370 435 C295 320, 315 175, 400 90 Z"/>
+          <circle class="outline" cx="400" cy="230" r="45"/>
+          <path class="outline" d="M337 365 L260 470 L370 430 Z"/>
+          <path class="outline" d="M463 365 L540 470 L430 430 Z"/>
+          <path class="outline" d="M370 435 C355 485, 375 535, 400 575 C425 535, 445 485, 430 435 Z"/>
+          <path class="outline" d="M386 445 C378 485, 392 520, 400 540 C408 520, 422 485, 414 445 Z"/>
+          <path class="outline" d="M650 80 L665 115 L700 120 L674 144 L682 178 L650 160 L618 178 L626 144 L600 120 L635 115 Z"/>
+          <path class="outline" d="M150 105 L160 130 L187 132 L166 150 L173 176 L150 162 L127 176 L134 150 L113 132 L140 130 Z"/>
+          <path class="outline" d="M650 360 L660 385 L687 387 L666 405 L673 431 L650 417 L627 431 L634 405 L613 387 L640 385 Z"/>
+          <path class="outline" d="M90 455 C135 430, 180 430, 215 455"/>
+        `
+      },
 
-      if (snapshot.width && snapshot.height) {
-        ctx.drawImage(snapshot, 0, 0, rect.width, rect.height);
+      fish: {
+        fills: `
+          <path class="region" data-name="water" d="M0 0 H800 V600 H0 Z"/>
+          <path class="region" data-name="fish-body" d="M190 310 C250 200, 470 190, 570 310 C470 430, 250 420, 190 310 Z"/>
+          <path class="region" data-name="tail" d="M570 310 L710 215 L690 310 L710 405 Z"/>
+          <path class="region" data-name="top-fin" d="M350 220 C385 145, 445 145, 470 220 Z"/>
+          <path class="region" data-name="bottom-fin" d="M350 400 C390 465, 455 455, 470 395 Z"/>
+          <path class="region" data-name="side-fin" d="M405 315 C455 335, 455 385, 405 390 C375 365, 375 335, 405 315 Z"/>
+          <circle class="region" data-name="bubble1" cx="145" cy="160" r="28"/>
+          <circle class="region" data-name="bubble2" cx="95" cy="235" r="18"/>
+          <circle class="region" data-name="bubble3" cx="670" cy="130" r="24"/>
+          <path class="region" data-name="seaweed1" d="M105 600 C80 520, 150 475, 115 395 C175 465, 125 520, 155 600 Z"/>
+          <path class="region" data-name="seaweed2" d="M680 600 C645 530, 705 465, 670 400 C735 480, 695 535, 725 600 Z"/>
+        `,
+        outlines: `
+          <path class="outline" d="M0 0 H800 V600 H0 Z"/>
+          <path class="outline" d="M190 310 C250 200, 470 190, 570 310 C470 430, 250 420, 190 310 Z"/>
+          <path class="outline" d="M570 310 L710 215 L690 310 L710 405 Z"/>
+          <path class="outline" d="M350 220 C385 145, 445 145, 470 220 Z"/>
+          <path class="outline" d="M350 400 C390 465, 455 455, 470 395 Z"/>
+          <path class="outline" d="M405 315 C455 335, 455 385, 405 390 C375 365, 375 335, 405 315 Z"/>
+          <circle class="outline" cx="145" cy="160" r="28"/>
+          <circle class="outline" cx="95" cy="235" r="18"/>
+          <circle class="outline" cx="670" cy="130" r="24"/>
+          <path class="outline" d="M105 600 C80 520, 150 475, 115 395 C175 465, 125 520, 155 600 Z"/>
+          <path class="outline" d="M680 600 C645 530, 705 465, 670 400 C735 480, 695 535, 725 600 Z"/>
+          <circle class="outline-fill" cx="285" cy="285" r="10"/>
+          <path class="outline" d="M300 340 C330 365, 365 365, 395 340"/>
+          <path class="outline" d="M75 520 C210 490, 585 490, 735 520"/>
+        `
       }
-    }
+    };
 
     function makePalette() {
       colors.forEach((color, index) => {
@@ -223,15 +374,102 @@
         btn.className = "swatch" + (index === 0 ? " selected" : "");
         btn.style.background = color;
         btn.title = color;
+
         btn.addEventListener("click", () => {
           currentColor = color;
-          erasing = false;
           document.querySelectorAll(".swatch").forEach(s => s.classList.remove("selected"));
           btn.classList.add("selected");
-          eraserBtn.textContent = "Eraser";
+          if (mode === "eraser") setMode("brush");
         });
+
         palette.appendChild(btn);
       });
+    }
+
+    function canvasSnapshot() {
+      return canvas.toDataURL("image/png");
+    }
+
+    function saveHistory() {
+      const fills = Array.from(fillLayer.querySelectorAll(".region")).map(region => region.style.fill || "#ffffff");
+      history.push({
+        page: pagePicker.value,
+        fills,
+        drawing: canvasSnapshot()
+      });
+      if (history.length > 40) history.shift();
+    }
+
+    function restoreState(state) {
+      if (!state) return;
+
+      if (state.page !== pagePicker.value) {
+        pagePicker.value = state.page;
+        loadPage(state.page, false);
+      }
+
+      fillLayer.querySelectorAll(".region").forEach((region, index) => {
+        region.style.fill = state.fills[index] || "#ffffff";
+      });
+
+      const img = new Image();
+      img.onload = () => {
+        const rect = canvas.getBoundingClientRect();
+        ctx.clearRect(0, 0, rect.width, rect.height);
+        ctx.drawImage(img, 0, 0, rect.width, rect.height);
+      };
+      img.src = state.drawing;
+    }
+
+    function setMode(nextMode) {
+      mode = nextMode;
+
+      bucketBtn.classList.toggle("active", mode === "bucket");
+      brushBtn.classList.toggle("active", mode === "brush");
+      eraserBtn.classList.toggle("active", mode === "eraser");
+
+      fillLayer.style.pointerEvents = mode === "bucket" ? "auto" : "none";
+      canvas.style.pointerEvents = mode === "bucket" ? "none" : "auto";
+    }
+
+    function loadPage(name, record = true) {
+      if (record) saveHistory();
+
+      fillLayer.innerHTML = pages[name].fills;
+      outlineLayer.innerHTML = pages[name].outlines;
+
+      fillLayer.querySelectorAll(".region").forEach(region => {
+        region.style.fill = "#ffffff";
+        region.addEventListener("click", event => {
+          if (mode !== "bucket") return;
+          event.preventDefault();
+          saveHistory();
+          region.style.fill = currentColor;
+        });
+      });
+
+      const rect = canvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+    }
+
+    function resizeCanvas() {
+      const rect = wrap.getBoundingClientRect();
+
+      const old = document.createElement("canvas");
+      old.width = canvas.width;
+      old.height = canvas.height;
+      old.getContext("2d").drawImage(canvas, 0, 0);
+
+      canvas.width = Math.round(rect.width * devicePixelRatio);
+      canvas.height = Math.round(rect.height * devicePixelRatio);
+
+      ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      if (old.width && old.height) {
+        ctx.drawImage(old, 0, 0, rect.width, rect.height);
+      }
     }
 
     function getPoint(event) {
@@ -245,7 +483,8 @@
 
     function drawTo(point) {
       const size = Number(brushSize.value);
-      ctx.globalCompositeOperation = erasing ? "destination-out" : "source-over";
+
+      ctx.globalCompositeOperation = mode === "eraser" ? "destination-out" : "source-over";
       ctx.strokeStyle = currentColor;
       ctx.lineWidth = size;
 
@@ -258,14 +497,18 @@
     }
 
     function startDrawing(event) {
+      if (mode === "bucket") return;
+
       event.preventDefault();
+      saveHistory();
       drawing = true;
       lastPoint = getPoint(event);
       drawTo(lastPoint);
     }
 
     function keepDrawing(event) {
-      if (!drawing) return;
+      if (!drawing || mode === "bucket") return;
+
       event.preventDefault();
       drawTo(getPoint(event));
     }
@@ -276,6 +519,88 @@
       ctx.globalCompositeOperation = "source-over";
     }
 
+    function clearPage() {
+      saveHistory();
+
+      fillLayer.querySelectorAll(".region").forEach(region => {
+        region.style.fill = "#ffffff";
+      });
+
+      const rect = canvas.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+    }
+
+    function svgToImage(svgNode) {
+      const clone = svgNode.cloneNode(true);
+      clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      const data = new XMLSerializer().serializeToString(clone);
+      const blob = new Blob([data], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+
+      return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          resolve(img);
+        };
+        img.src = url;
+      });
+    }
+
+    async function savePicture() {
+      const rect = wrap.getBoundingClientRect();
+      const output = document.createElement("canvas");
+      output.width = Math.round(rect.width * devicePixelRatio);
+      output.height = Math.round(rect.height * devicePixelRatio);
+
+      const out = output.getContext("2d");
+      out.fillStyle = "white";
+      out.fillRect(0, 0, output.width, output.height);
+
+      const fillImage = await svgToImage(fillLayer);
+      const outlineImage = await svgToImage(outlineLayer);
+
+      out.drawImage(fillImage, 0, 0, output.width, output.height);
+      out.drawImage(canvas, 0, 0, output.width, output.height);
+      out.drawImage(outlineImage, 0, 0, output.width, output.height);
+
+      const fileName = pagePicker.value + "-coloring-page.png";
+
+      output.toBlob(blob => {
+        if (!blob) {
+          alert("Sorry, the picture could not be saved on this device.");
+          return;
+        }
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+        }, 1000);
+      }, "image/png");
+    }
+
+    customColor.addEventListener("input", () => {
+      currentColor = customColor.value;
+      document.querySelectorAll(".swatch").forEach(s => s.classList.remove("selected"));
+      if (mode === "eraser") setMode("brush");
+    });
+
+    pagePicker.addEventListener("change", () => loadPage(pagePicker.value));
+    bucketBtn.addEventListener("click", () => setMode("bucket"));
+    brushBtn.addEventListener("click", () => setMode("brush"));
+    eraserBtn.addEventListener("click", () => setMode("eraser"));
+    undoBtn.addEventListener("click", () => restoreState(history.pop()));
+    clearBtn.addEventListener("click", clearPage);
+    saveBtn.addEventListener("click", savePicture);
+
     canvas.addEventListener("mousedown", startDrawing);
     canvas.addEventListener("mousemove", keepDrawing);
     window.addEventListener("mouseup", stopDrawing);
@@ -284,47 +609,11 @@
     canvas.addEventListener("touchmove", keepDrawing, { passive: false });
     window.addEventListener("touchend", stopDrawing);
 
-    eraserBtn.addEventListener("click", () => {
-      erasing = !erasing;
-      eraserBtn.textContent = erasing ? "Color Again" : "Eraser";
-      document.querySelectorAll(".swatch").forEach(s => s.classList.remove("selected"));
-    });
-
-    clearBtn.addEventListener("click", () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-    });
-
-    saveBtn.addEventListener("click", () => {
-      const output = document.createElement("canvas");
-      const rect = wrap.getBoundingClientRect();
-      output.width = canvas.width;
-      output.height = canvas.height;
-      const out = output.getContext("2d");
-
-      out.fillStyle = "white";
-      out.fillRect(0, 0, output.width, output.height);
-      out.drawImage(canvas, 0, 0);
-
-      const svg = document.querySelector("svg");
-      const svgData = new XMLSerializer().serializeToString(svg);
-      const img = new Image();
-      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-      const url = URL.createObjectURL(svgBlob);
-
-      img.onload = () => {
-        out.drawImage(img, 0, 0, output.width, output.height);
-        URL.revokeObjectURL(url);
-        const link = document.createElement("a");
-        link.download = "my-coloring-picture.png";
-        link.href = output.toDataURL("image/png");
-        link.click();
-      };
-
-      img.src = url;
-    });
-
     makePalette();
     resizeCanvas();
+    loadPage("dino", false);
+    setMode("bucket");
+
     window.addEventListener("resize", resizeCanvas);
   </script>
 </body>
