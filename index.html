@@ -530,46 +530,73 @@
       ctx.clearRect(0, 0, rect.width, rect.height);
     }
 
-    function prepareSvgForExport(svgNode) {
-      const clone = svgNode.cloneNode(true);
-      clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-      clone.setAttribute("width", "800");
-      clone.setAttribute("height", "600");
+    function drawSvgShapeToCanvas(targetCtx, element, scaleX, scaleY, type) {
+      targetCtx.save();
+      targetCtx.scale(scaleX, scaleY);
+      targetCtx.lineCap = "round";
+      targetCtx.lineJoin = "round";
 
-      clone.querySelectorAll(".region").forEach(shape => {
-        shape.setAttribute("fill", shape.style.fill || "#ffffff");
-        shape.setAttribute("stroke", "none");
-      });
+      const tag = element.tagName.toLowerCase();
 
-      clone.querySelectorAll(".outline").forEach(shape => {
-        shape.setAttribute("fill", "none");
-        shape.setAttribute("stroke", "#111111");
-        shape.setAttribute("stroke-width", "8");
-        shape.setAttribute("stroke-linecap", "round");
-        shape.setAttribute("stroke-linejoin", "round");
-      });
+      if (type === "fill") {
+        targetCtx.fillStyle = element.style.fill || element.getAttribute("fill") || "#ffffff";
+        targetCtx.strokeStyle = "transparent";
+        targetCtx.lineWidth = 0;
+      } else if (type === "outline") {
+        targetCtx.fillStyle = "transparent";
+        targetCtx.strokeStyle = "#111111";
+        targetCtx.lineWidth = 8;
+      } else if (type === "outline-fill") {
+        targetCtx.fillStyle = "#111111";
+        targetCtx.strokeStyle = "transparent";
+        targetCtx.lineWidth = 0;
+      }
 
-      clone.querySelectorAll(".outline-fill").forEach(shape => {
-        shape.setAttribute("fill", "#111111");
-        shape.setAttribute("stroke", "none");
-      });
+      targetCtx.beginPath();
 
-      return clone;
+      if (tag === "path") {
+        const d = element.getAttribute("d");
+        if (d && window.Path2D) {
+          const path = new Path2D(d);
+          if (type === "fill" || type === "outline-fill") {
+            targetCtx.fill(path);
+          } else {
+            targetCtx.stroke(path);
+          }
+        }
+      }
+
+      if (tag === "circle") {
+        const cx = Number(element.getAttribute("cx"));
+        const cy = Number(element.getAttribute("cy"));
+        const r = Number(element.getAttribute("r"));
+        targetCtx.arc(cx, cy, r, 0, Math.PI * 2);
+
+        if (type === "fill" || type === "outline-fill") {
+          targetCtx.fill();
+        } else {
+          targetCtx.stroke();
+        }
+      }
+
+      targetCtx.restore();
     }
 
-    function svgToImage(svgNode) {
-      const clone = prepareSvgForExport(svgNode);
-      const data = new XMLSerializer().serializeToString(clone);
-      const blob = new Blob([data], { type: "image/svg+xml;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
+    function drawLayerDirectly(targetCtx, layer, scaleX, scaleY, modeName) {
+      layer.querySelectorAll("path, circle").forEach(element => {
+        if (modeName === "fill") {
+          if (element.classList.contains("region")) {
+            drawSvgShapeToCanvas(targetCtx, element, scaleX, scaleY, "fill");
+          }
+        } else {
+          if (element.classList.contains("outline")) {
+            drawSvgShapeToCanvas(targetCtx, element, scaleX, scaleY, "outline");
+          }
 
-      return new Promise(resolve => {
-        const img = new Image();
-        img.onload = () => {
-          URL.revokeObjectURL(url);
-          resolve(img);
-        };
-        img.src = url;
+          if (element.classList.contains("outline-fill")) {
+            drawSvgShapeToCanvas(targetCtx, element, scaleX, scaleY, "outline-fill");
+          }
+        }
       });
     }
 
@@ -583,14 +610,12 @@
       out.fillStyle = "white";
       out.fillRect(0, 0, output.width, output.height);
 
-      const fillImage = await svgToImage(fillLayer);
-      const outlineImage = await svgToImage(outlineLayer);
+      const scaleX = output.width / 800;
+      const scaleY = output.height / 600;
 
-      out.drawImage(fillImage, 0, 0, output.width, output.height);
+      drawLayerDirectly(out, fillLayer, scaleX, scaleY, "fill");
       out.drawImage(canvas, 0, 0, output.width, output.height);
-      out.drawImage(outlineImage, 0, 0, output.width, output.height);
-
-      const fileName = pagePicker.value + "-coloring-page.png";
+      drawLayerDirectly(out, outlineLayer, scaleX, scaleY, "outline");
 
       output.toBlob(blob => {
         if (!blob) {
@@ -602,7 +627,7 @@
         const link = document.createElement("a");
 
         link.href = url;
-        link.download = fileName;
+        link.download = pagePicker.value + "-coloring-page.png";
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -612,12 +637,6 @@
         }, 1000);
       }, "image/png");
     }
-
-    customColor.addEventListener("input", () => {
-      currentColor = customColor.value;
-      document.querySelectorAll(".swatch").forEach(s => s.classList.remove("selected"));
-      if (mode === "eraser") setMode("brush");
-    });
 
     pagePicker.addEventListener("change", () => loadPage(pagePicker.value));
     bucketBtn.addEventListener("click", () => setMode("bucket"));
